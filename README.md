@@ -1,8 +1,8 @@
 # The Tail Wags the Dog
 
-[Open the live app](https://YOUR-APP.streamlit.app)
+[Open the live app](https://bess-tail-economics.streamlit.app)
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://YOUR-APP.streamlit.app)
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://bess-tail-economics.streamlit.app)
 
 ![Review hero](assets/review-hero.svg)
 
@@ -16,9 +16,8 @@ Publication-style Streamlit article on German BESS merchant revenue, tail-day co
 ## Publish For Review
 1. Push this repository to a public GitHub repo.
 2. Deploy `app.py` from that repo on [Streamlit Community Cloud](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/deploy).
-3. Replace both `https://YOUR-APP.streamlit.app` placeholders in this README with the real live URL.
-4. In GitHub repo `About`, set `Website` to the same live URL so the review link is visible on the repo front page.
-5. Send reviewers the Streamlit URL first, and the GitHub repo second.
+3. In GitHub repo `About`, set `Website` to the same live URL so the review link is visible on the repo front page.
+4. Send reviewers the Streamlit URL first, and the GitHub repo second.
 
 Suggested GitHub repo description:
 
