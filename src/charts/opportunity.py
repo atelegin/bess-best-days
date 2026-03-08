@@ -198,9 +198,9 @@ def build_signal_frequency_figure(signal_summary: pd.DataFrame) -> go.Figure:
 
 def build_watchlist_scatter_figure(watchlist_frame: pd.DataFrame, base_rate_pct: float) -> go.Figure:
     color_map = {
-        "Ramp >= 200 €/MWh": "#e76f51",
-        "Spread >= 200 €/MWh": "#f4a261",
-        "Ramp >= 150 €/MWh": "#2a9d8f",
+        "Ramp ≥ 200 €/MWh": "#e76f51",
+        "Spread ≥ 200 €/MWh": "#f4a261",
+        "Ramp ≥ 150 €/MWh": "#2a9d8f",
     }
     fig = go.Figure()
     for _, row in watchlist_frame.iterrows():
@@ -255,8 +255,8 @@ def build_watchlist_scatter_figure(watchlist_frame: pd.DataFrame, base_rate_pct:
         annotation_font={"size": 11, "color": "#5c677d"},
     )
     fig.update_layout(
-        xaxis_title="Recall on top-20 days (%)",
-        yaxis_title="Precision on top-20 days (%)",
+        xaxis_title="Recall (%)",
+        yaxis_title="Precision (%)",
         template="plotly_white",
         margin={"l": 10, "r": 10, "t": 24, "b": 10},
         height=420,
