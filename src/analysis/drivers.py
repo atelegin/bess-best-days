@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 
 from src.data.prices import compute_daily_price_metrics
@@ -49,20 +48,21 @@ def compute_price_shape_profiles(price_frame: pd.DataFrame, top_dates: pd.Index)
     hourly = price_frame["price_eur_mwh"].resample("1h").mean().to_frame("price_eur_mwh")
     hourly["date"] = hourly.index.tz_localize(None).normalize()
     hourly["hour"] = hourly.index.hour
-    all_profile = hourly.groupby("hour")["price_eur_mwh"].mean().rename("all_days")
-    top_profile = hourly[hourly["date"].isin(pd.to_datetime(top_dates))].groupby("hour")["price_eur_mwh"].mean().rename("top_days")
-    unique_dates = pd.Index(hourly["date"].drop_duplicates().sort_values())
-    sample_size = min(40, len(unique_dates))
-    if sample_size > 0:
-        sample_positions = np.linspace(0, len(unique_dates) - 1, sample_size).round().astype(int)
-        sampled_dates = unique_dates.take(sample_positions)
-    else:
-        sampled_dates = unique_dates
-    sampled_profiles = hourly[hourly["date"].isin(sampled_dates)].copy()
-    sampled_profiles["date_label"] = sampled_profiles["date"].dt.strftime("%Y-%m-%d")
+    profile_matrix = (
+        hourly.pivot_table(index="date", columns="hour", values="price_eur_mwh", aggfunc="mean")
+        .reindex(columns=range(24))
+        .sort_index()
+    )
+    top_index = pd.DatetimeIndex(pd.to_datetime(top_dates))
+    if top_index.tz is not None:
+        top_index = top_index.tz_localize(None)
+    top_dates_normalized = top_index.normalize()
+    all_profile = profile_matrix.median(axis=0).rename("all_days")
+    top_profile = (
+        profile_matrix.loc[profile_matrix.index.isin(top_dates_normalized)].median(axis=0).rename("top_days")
+    )
     return {
-        "sampled_days": sampled_profiles,
-        "average_profiles": pd.concat([all_profile, top_profile], axis=1).reset_index(),
+        "median_profiles": pd.concat([all_profile, top_profile], axis=1).reset_index(),
     }
 
 

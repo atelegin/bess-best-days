@@ -15,14 +15,14 @@
   <circle cx="1410" cy="680" r="170" fill="#F4614C" fill-opacity="0.10"/>
   <rect x="92" y="96" width="1416" height="708" rx="28" fill="white" fill-opacity="0.05" stroke="white" stroke-opacity="0.10"/>
 
-  <text x="132" y="182" fill="#F4F7FB" font-family="Georgia, 'Times New Roman', serif" font-size="78" font-weight="700">
-    The Tail Wags the Dog
+  <text x="132" y="182" fill="#F4F7FB" font-family="Georgia, 'Times New Roman', serif" font-size="74" font-weight="700">
+    The Cost of Missing the Best Days
   </text>
   <text x="132" y="258" fill="#D7E0ED" font-family="Arial, sans-serif" font-size="34">
     A review-first Streamlit article on German BESS merchant revenue,
   </text>
   <text x="132" y="304" fill="#D7E0ED" font-family="Arial, sans-serif" font-size="34">
-    tail-day concentration, cycling intensity, and warranty economics.
+    best-day concentration, day-ahead visibility, and timed flexibility.
   </text>
 
   <rect x="132" y="376" width="548" height="302" rx="24" fill="white" fill-opacity="0.07" stroke="white" stroke-opacity="0.10"/>
@@ -44,13 +44,13 @@
     Core question
   </text>
   <text x="780" y="500" fill="#F4F7FB" font-family="Georgia, 'Times New Roman', serif" font-size="42" font-weight="700">
-    Should a battery be preserved
+    How costly is it to miss
   </text>
   <text x="780" y="552" fill="#F4F7FB" font-family="Georgia, 'Times New Roman', serif" font-size="42" font-weight="700">
-    for future optionality,
+    the best merchant days,
   </text>
   <text x="780" y="604" fill="#F4F7FB" font-family="Georgia, 'Times New Roman', serif" font-size="42" font-weight="700">
-    or pushed harder today?
+    and what can operators see ex ante?
   </text>
 
   <rect x="132" y="726" width="1236" height="44" rx="22" fill="white" fill-opacity="0.08"/>

@@ -1,2 +1,1 @@
-"""The Tail Wags the Dog application package."""
-
+"""The Cost of Missing the Best Days application package."""

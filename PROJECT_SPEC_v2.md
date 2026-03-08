@@ -1,4 +1,4 @@
-# The Tail Wags the Dog
+# The Cost of Missing the Best Days
 
 ## Revenue Concentration and Optimal Cycling Strategy in German BESS
 
@@ -263,7 +263,7 @@ Example structure:
 ### Directory Structure
 
 ```
-german-bess-tail-revenue/
+bess-best-days/
 ├── README.md
 ├── requirements.txt
 ├── app.py                        # Streamlit entry point
@@ -474,7 +474,7 @@ def compute_npv(
 ## 8. README Structure
 
 ```markdown
-# The Tail Wags the Dog
+# The Cost of Missing the Best Days
 ## Revenue Concentration and Optimal Cycling Strategy in German BESS
 
 ### The Question
@@ -495,7 +495,7 @@ def compute_npv(
 ### How to Run
 \```bash
 git clone ...
-cd german-bess-tail-revenue
+cd bess-best-days
 pip install -r requirements.txt
 streamlit run app.py
 \```
