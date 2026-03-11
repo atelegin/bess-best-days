@@ -8,21 +8,6 @@
 
 Publication-style Streamlit article on German BESS merchant revenue concentration, day-ahead visibility, and the value of timed availability, readiness, and flexibility.
 
-## Review Path
-- Open the live app first.
-- Read sections 1-4 in order.
-- Read the story in this order: missed best days, best-day shape, watchlist usefulness, same-throughput timing value.
-
-## Publish For Review
-1. Push this repository to a public GitHub repo.
-2. Deploy `app.py` from that repo on [Streamlit Community Cloud](https://docs.streamlit.io/deploy/streamlit-community-cloud/deploy-your-app/deploy).
-3. In GitHub repo `About`, set `Website` to the same live URL so the review link is visible on the repo front page.
-4. Send reviewers the Streamlit URL first, and the GitHub repo second.
-
-Suggested GitHub repo description:
-
-`Publication-style Streamlit article on German BESS merchant revenue concentration, day-ahead visibility, and timed flexibility.`
-
 ## The Question
 German BESS merchant revenue is not earned evenly through the year. A limited set of disproportionately valuable days drives annual outcomes, and many of those days are already partly visible before delivery. That changes the commercial question from average optimization to timed availability, readiness, and throughput allocation.
 
@@ -63,13 +48,6 @@ source .venv/bin/activate
 pip install -r requirements.txt
 streamlit run app.py
 ```
-
-## Streamlit Review Checklist
-- Confirm the top link in this README points to the deployed app, not `localhost`.
-- Confirm GitHub `About -> Website` points to the same deployed app.
-- Confirm the app opens directly into the publication narrative without sidebar controls.
-- Confirm the top scope line shows `Base case`, `Validation`, and `Method note`.
-- Confirm the four sections match the README structure above.
 
 ## Project Structure
 ```text
