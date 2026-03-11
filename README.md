@@ -84,12 +84,8 @@ bess-best-days/
 │   ├── charts/
 │   ├── data/
 │   └── models/
-├── scripts/
-│   └── revenue_breakdown.py
 ├── data/
 │   └── cache/
-└── notebooks/
-    └── exploration.ipynb
 ```
 
 ## Assumptions And Limitations
