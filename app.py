@@ -76,6 +76,7 @@ def apply_app_style() -> None:
                 margin-left: auto;
                 margin-right: auto;
                 padding-top: 2rem;
+                padding-bottom: 0.5rem;
                 padding-left: 2.25rem;
                 padding-right: 2.25rem;
             }
@@ -92,7 +93,7 @@ def apply_app_style() -> None:
                 font-family: 'IBM Plex Sans', sans-serif;
             }
             .hero-card {
-                padding: 0.4rem 0 0.8rem 0;
+                padding: 1.4rem 0 0.8rem 0;
                 margin-bottom: 0.8rem;
             }
             .hero-kicker {
