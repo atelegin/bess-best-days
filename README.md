@@ -6,12 +6,12 @@
 
 ![Review hero](assets/review-hero.svg)
 
-Publication-style Streamlit article on German BESS merchant revenue concentration, day-ahead visibility, and the value of timed flexibility.
+Publication-style Streamlit article on German BESS merchant revenue concentration, day-ahead visibility, and the value of timed availability, readiness, and flexibility.
 
 ## Review Path
 - Open the live app first.
 - Read sections 1-4 in order.
-- Read the story in this order: missed best days, best-day shape, day-ahead watchlist, same-throughput uplift.
+- Read the story in this order: missed best days, best-day shape, watchlist usefulness, same-throughput timing value.
 
 ## Publish For Review
 1. Push this repository to a public GitHub repo.
@@ -24,29 +24,37 @@ Suggested GitHub repo description:
 `Publication-style Streamlit article on German BESS merchant revenue concentration, day-ahead visibility, and timed flexibility.`
 
 ## The Question
-German BESS merchant revenue is not earned evenly through the year. A limited set of high-value days drives a disproportionate share of annual income, and many of those days are already partly visible in the day-ahead curve. That changes the commercial question from average optimisation to timed availability, readiness, and throughput allocation.
+German BESS merchant revenue is not earned evenly through the year. A limited set of disproportionately valuable days drives annual outcomes, and many of those days are already partly visible before delivery. That changes the commercial question from average optimization to timed availability, readiness, and throughput allocation.
+
+## Article Structure
+- Section 1: revenue is concentrated where it matters most.
+- Section 2: high-value days show a deeper midday trough and a wider evening-minus-midday ramp.
+- Section 3: a useful early-warning screen exists at D-2, but the strongest screening power appears at D-1.
+- Section 4: even with the same annual throughput, concentrating cycles into the strongest days earns more revenue.
+- Closing: availability, readiness, and flexibility matter most when they are timed.
 
 ## What Is Implemented
-- Day-ahead price ingestion from Energy-Charts with parquet cache and native timestep handling for the 2025 quarter-hour transition.
-- Official intraday series ingestion from Netztransparenz `ID-AEP`.
+- Day-ahead price ingestion from Energy-Charts with native timestep handling through the 2025 quarter-hour transition.
+- Official intraday proxy ingestion from Netztransparenz `ID-AEP`.
 - Sequential day-ahead plus intraday-overlay dispatch using SciPy HiGHS.
-- Revenue concentration analytics, top-day diagnostics, day-ahead watchlist scoring, and same-throughput reallocation analysis.
-- Streamlit report written as a publication-style narrative for investors, traders, and asset owners.
+- A publication-style Streamlit narrative built around four fixed sections and a closing owner takeaway.
+- Revenue concentration analytics, best-day shape diagnostics, pooled watchlist screening, and same-throughput reallocation analysis.
 
-## Methodology
-- Day-ahead prices: Energy-Charts API (`DE-LU`, `2021-01-01` through `2025-12-31`).
-- Intraday layer: Netztransparenz `ID-AEP` web service (`2021-01-01` through `2025-12-31` in the app), used as an official intraday series rather than a full continuous trade tape.
-- Dispatch model: linear optimization with power limits, SoC bounds, usable-energy-aware cycle limits, and an end-of-day SoC return band. The publication app uses one merchant revenue series built as a sequential stack: day-ahead schedule first, then intraday re-trading on `ID-AEP`.
-- Best-day shape model: top-20 revenue days are compared with all days using median day-ahead hourly price profiles.
-- Watchlist model: simple day-ahead rules are evaluated on pooled `2021-2025` data using recall, precision, and lift against the top-20 revenue-day base rate.
-- Reallocation model: strict daily caps are compared with an annual allocator using the same realized FEC, isolating timing value from throughput volume.
+## Core Method
+- Scope: base case is a 2h battery with a 2025 deep dive; validation uses pooled `2021-2025` data.
+- Merchant revenue is modeled as one combined day-ahead plus intraday series using Energy-Charts day-ahead prices and the official Netztransparenz `ID-AEP` index for the intraday layer.
+- Dispatch is modeled sequentially across day-ahead and intraday with fixed round-trip efficiency of `0.86`.
+- Best-day shape compares top-20 revenue days against the full sample average day using median hourly day-ahead price profiles.
+- Watchlist screening uses pooled `2021-2025` precision, recall, and lift versus the top-20 revenue-day base rate.
+- Same-throughput reallocation compares strict daily caps with an annual allocator using the same realized FEC, isolating timing value from extra throughput.
 
 ## Important Modeling Choices
-- The dispatch solver uses the native market timestep per day, not a fixed 24-step hour model. This matters for Q4 2025 because Energy-Charts shifts to 15-minute prices.
-- The publication app fixes round-trip efficiency at `0.86` instead of exposing it as a user control.
-- The strategy `min spread to trade` input is approximated as a symmetric throughput penalty in the LP objective. That keeps the optimization linear while preserving the economic intent of a minimum spread hurdle.
-- Physical cycle count is approximated from contiguous charge/discharge segments. This is practical for this report but less precise than rainflow counting on a full SoC trace.
-- The same-throughput comparison isolates timing value by holding realized annual throughput constant between the strict-cap and flexible allocator cases.
+- Dispatch is a perfect-foresight upper bound.
+- `ID-AEP` is used as an audit-friendly intraday proxy, not as a full continuous intraday trade tape.
+- The merchant stack is modeled as sequential `DA + intraday overlay`, not as a fully joint `DA+ID` co-optimization.
+- The app fixes round-trip efficiency at `0.86` and does not expose it as a user control.
+- Reallocation uplift is still based on realized opportunity ranking, so it should be read as an economic upper bound on timing value.
+- No `FCR`, `aFRR` energy, or ancillary co-optimization stack is modeled.
 
 ## How To Run
 ```bash
@@ -60,7 +68,8 @@ streamlit run app.py
 - Confirm the top link in this README points to the deployed app, not `localhost`.
 - Confirm GitHub `About -> Website` points to the same deployed app.
 - Confirm the app opens directly into the publication narrative without sidebar controls.
-- Confirm the `Public sources` note is visible on the page for external audit.
+- Confirm the top scope line shows `Base case`, `Validation`, and `Method note`.
+- Confirm the four sections match the README structure above.
 
 ## Project Structure
 ```text
@@ -75,6 +84,8 @@ bess-best-days/
 │   ├── charts/
 │   ├── data/
 │   └── models/
+├── scripts/
+│   └── revenue_breakdown.py
 ├── data/
 │   └── cache/
 └── notebooks/
@@ -82,18 +93,16 @@ bess-best-days/
 ```
 
 ## Assumptions And Limitations
-- Dispatch is a perfect-foresight upper bound.
-- The app uses `ID-AEP` as an audit-friendly intraday series, not as a full intraday continuous trade tape.
-- Merchant revenue is modeled as a sequential `DA + ID overlay` stack, not as a fully joint `DA+ID` co-optimization.
-- No `aFRR` energy, `FCR` energy, or `DA+ID` co-optimization stack is modeled.
-- Reallocation uplift is still based on realized perfect-foresight opportunity ranking, so it should be read as an economic upper bound on timing value.
+- The article is intentionally fixed-scope and publication-style, not an exploratory dashboard.
+- D-2 metrics in Section 3 are presented as an early-warning benchmark used in the article narrative.
+- The app uses public market data and simplified merchant dispatch assumptions to make the owner problem legible, not to replicate plant-level execution frictions exactly.
 - Degradation excludes temperature, C-rate effects, and chemistry-specific nonlinearities.
 
 ## Better Next Steps
-- Replace the cycle-event approximation with rainflow counting on the SoC series.
-- Add a more realistic intraday execution layer if you want a closer approximation to gate closures and re-trading frictions.
-- Replace the `ID-AEP` overlay proxy with a full `DA+ID` co-optimization layer if you get an auditable intraday continuous trade source.
-- Add a maintenance-timing or operational-readiness simulator on top of the day-ahead watchlist logic.
+- Add a more realistic D-2 feature-construction pipeline if you want the early-warning screen to be fully derived inside the app instead of presented as a narrative benchmark.
+- Replace the intraday proxy with a fuller auditable intraday execution dataset if one becomes available.
+- Add a maintenance-timing simulator on top of the watchlist logic.
+- Replace the cycle-event approximation with rainflow counting on the SoC trace.
 
 ## AI Usage
 AI was used to scaffold the research app, implement the data/model/chart layers, and wire the Streamlit narrative together. External market data still comes from the cited source systems at runtime.

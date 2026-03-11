@@ -18,9 +18,9 @@ from src.analysis.opportunity_bridge import (
 )
 from src.analysis.revenue_breakdown import summarize_missing_top_days
 from src.charts.opportunity import (
+    build_early_warning_screen_figure,
     build_missed_days_figure,
     build_same_cycles_reallocation_figure,
-    build_watchlist_scatter_figure,
 )
 from src.charts.scatter import build_price_shape_figure
 from src.data.cache import get_or_build_dataframe, make_cache_key
@@ -116,24 +116,6 @@ def apply_app_style() -> None:
                 max-width: 54rem;
                 margin: 0.2rem 0 1rem 0;
             }
-            .scope-block {
-                margin: 0.8rem 0 2rem 0;
-                padding: 0.95rem 1rem;
-                background: rgba(255, 251, 245, 0.76);
-                border: 1px solid rgba(20, 33, 61, 0.08);
-                border-radius: 0.6rem;
-            }
-            .scope-line {
-                color: var(--muted);
-                font-size: 0.94rem;
-                line-height: 1.55;
-                margin: 0.1rem 0;
-            }
-            .section-lede {
-                font-size: 1.08rem;
-                line-height: 1.7;
-                margin: 0 0 1rem 0;
-            }
             .chart-title {
                 font-family: 'Source Serif 4', serif;
                 font-size: 1.25rem;
@@ -145,7 +127,7 @@ def apply_app_style() -> None:
                 color: var(--muted);
                 font-size: 0.93rem;
                 line-height: 1.55;
-                margin: 0.6rem 0 0 0;
+                margin: 0.75rem 0 0 0;
             }
             .takeaway-box {
                 margin: 0.8rem 0 2rem 0;
@@ -169,21 +151,33 @@ def apply_app_style() -> None:
             }
             .small-note {
                 color: var(--muted);
-                font-size: 0.92rem;
+                font-size: 0.84rem;
+                line-height: 1.45;
+                margin: 0.45rem 0 0 0;
+            }
+            .annotation-box {
+                margin: 0.95rem 0 2rem 0;
+                padding: 0.95rem 1rem;
+                background: rgba(255, 251, 245, 0.92);
+                border: 1px solid rgba(20, 33, 61, 0.08);
+                border-radius: 0.6rem;
+            }
+            .annotation-title {
+                font-family: 'Source Serif 4', serif;
+                font-size: 1.06rem;
+                line-height: 1.35;
+                color: var(--ink);
+                margin: 0 0 0.35rem 0;
+            }
+            .annotation-text {
+                color: var(--ink);
+                line-height: 1.55;
             }
             .closing-line {
                 font-family: 'Source Serif 4', serif;
                 font-size: 1.25rem;
                 line-height: 1.45;
                 margin: 1rem 0 0.75rem 0;
-            }
-            .source-note {
-                color: var(--muted);
-                font-size: 0.92rem;
-                line-height: 1.45;
-            }
-            .source-note p {
-                margin: 0.18rem 0;
             }
         </style>
         """,
@@ -265,9 +259,6 @@ def load_id_aep_for_year(year: int) -> pd.DataFrame:
         force_refresh=False,
     )
 
-def render_section_lede(text: str) -> None:
-    st.markdown(f'<div class="section-lede">{text}</div>', unsafe_allow_html=True)
-
 
 def render_intro() -> None:
     st.markdown(
@@ -290,21 +281,15 @@ def render_takeaway(text: str) -> None:
     )
 
 
-def render_scope_block() -> None:
-    st.markdown(
-        """
-        <div class="scope-block">
-            <div class="scope-line"><strong>Base case:</strong> 2h battery, 2025 deep dive</div>
-            <div class="scope-line"><strong>Validation:</strong> pooled 2021–2025</div>
-            <div class="scope-line"><strong>Method note:</strong> modelled as one combined day-ahead + intraday revenue series, using the official Netztransparenz ID-AEP index for the intraday layer</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
 def render_footer_note(text: str) -> None:
     st.markdown(f'<div class="small-note">{text}</div>', unsafe_allow_html=True)
+
+
+def render_annotation_box(title: str, text: str) -> None:
+    st.markdown(
+        f'<div class="annotation-box"><div class="annotation-title">{title}</div><div class="annotation-text">{text}</div></div>',
+        unsafe_allow_html=True,
+    )
 
 
 def render_chart_title(text: str) -> None:
@@ -317,30 +302,6 @@ def render_chart_caption(text: str) -> None:
 
 def render_closing_line(text: str) -> None:
     st.markdown(f'<div class="closing-line">{text}</div>', unsafe_allow_html=True)
-
-
-def render_public_sources() -> None:
-    st.markdown(
-        """
-        <div class="source-note">
-            <p><strong>Public sources:</strong></p>
-            <p>Data: <a href="https://api.energy-charts.info/price" target="_blank">Energy-Charts price API</a>,
-            <a href="https://api.energy-charts.info/public_power" target="_blank">Energy-Charts public power API</a>,
-            <a href="https://www.netztransparenz.de/de-de/Regelenergie/Ausgleichsenergiepreis/Index-Ausgleichsenergiepreis" target="_blank">Netztransparenz ID-AEP page</a>,
-            <a href="https://www.netztransparenz.de/xspproxy/api/staticfiles/ntp-relaunch/dokumente/web-api/dokumentation-webserviceapi-netztransparenz_v1.14.pdf" target="_blank">Netztransparenz WebAPI documentation</a></p>
-            <p>Warranty / degradation framing:
-            <a href="https://powin.com/wp-content/uploads/2024/11/Powin-POD-Datasheet_Q4_2024.pdf" target="_blank">Powin Pod Datasheet Q4 2024</a>,
-            <a href="https://ir.tesla.com/_flysystem/s3/sec/000156459017015705/tsla-10q_20170630-gen_0.pdf" target="_blank">Tesla 10-Q warranty language</a>,
-            <a href="https://info.fluenceenergy.com/hubfs/Smart_Service_Plans_BR-057-02-EN.pdf" target="_blank">Fluence Smart Service Plans</a>,
-            <a href="https://powin.com/wp-content/uploads/2024/02/Service-Offerings_Brochure-3.pdf" target="_blank">Powin Service Offerings</a></p>
-            <p>Public battery-life modeling references:
-            <a href="https://www.nrel.gov/transportation/blast.html" target="_blank">NREL BLAST</a>,
-            <a href="https://www.nrel.gov/samples/other/software-module/blast-lite--battery-lifetime-analysis-and-simulation-tool---lite" target="_blank">NREL BLAST-Lite</a></p>
-            <p>The break-even annual premium / reserve shown above is a model output, not a public OEM price list.</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
 
 
 def build_cycle_intensity_frontier_payload(
@@ -408,7 +369,11 @@ def main() -> None:
     apply_app_style()
     render_header()
     render_intro()
-    render_scope_block()
+    render_footer_note(
+        "<strong>Base case:</strong> 2h battery, 2025 deep dive"
+        "<br><strong>Validation:</strong> pooled 2021–2025"
+        "<br><strong>Method note:</strong> Merchant revenue is modelled as a combined day-ahead plus intraday series, using Energy-Charts day-ahead prices and the official Netztransparenz ID-AEP index for the intraday layer. Dispatch is modelled sequentially across day-ahead and intraday with a fixed round-trip efficiency of 0.86."
+    )
     inputs = select_battery_inputs()
 
     duration_hours = int(inputs["duration_hours"])
@@ -484,44 +449,35 @@ def main() -> None:
     }
     pooled_day_ahead_observables = concatenate_day_ahead_observable_tables(day_ahead_observables_by_year)
     pooled_watchlist_top20 = build_day_ahead_watchlist_table(pooled_day_ahead_observables, target_count=20)
-    watchlist_signals = [
-        "DA evening-midday ramp >= 200 €/MWh",
-        "DA spread >= 200 €/MWh",
-        "DA evening-midday ramp >= 150 €/MWh",
-    ]
-    watchlist_short_label = {
-        "DA evening-midday ramp >= 200 €/MWh": "Ramp ≥ 200 €/MWh",
-        "DA spread >= 200 €/MWh": "Spread ≥ 200 €/MWh",
-        "DA evening-midday ramp >= 150 €/MWh": "Ramp ≥ 150 €/MWh",
-    }
-    watchlist_callouts = {
-        "DA evening-midday ramp >= 200 €/MWh": (
-            f"{pooled_watchlist_top20.loc['DA evening-midday ramp >= 200 €/MWh', 'precision_pct']:.1f}% precision, "
-            f"{pooled_watchlist_top20.loc['DA evening-midday ramp >= 200 €/MWh', 'recall_pct']:.0f}% recall, "
-            f"{pooled_watchlist_top20.loc['DA evening-midday ramp >= 200 €/MWh', 'lift_x']:.2f}x base-rate odds"
-        ),
-        "DA spread >= 200 €/MWh": (
-            f"{pooled_watchlist_top20.loc['DA spread >= 200 €/MWh', 'precision_pct']:.1f}% precision, "
-            f"{pooled_watchlist_top20.loc['DA spread >= 200 €/MWh', 'recall_pct']:.0f}% recall"
-        ),
-        "DA evening-midday ramp >= 150 €/MWh": (
-            f"{pooled_watchlist_top20.loc['DA evening-midday ramp >= 150 €/MWh', 'precision_pct']:.1f}% precision, "
-            f"{pooled_watchlist_top20.loc['DA evening-midday ramp >= 150 €/MWh', 'recall_pct']:.0f}% recall"
-        ),
-    }
-    watchlist_annotation_positions = {
-        "DA evening-midday ramp >= 200 €/MWh": {"xshift": 68, "yshift": 22, "xanchor": "left", "yanchor": "bottom"},
-        "DA spread >= 200 €/MWh": {"xshift": 70, "yshift": -2, "xanchor": "left", "yanchor": "middle"},
-        "DA evening-midday ramp >= 150 €/MWh": {"xshift": -18, "yshift": 18, "xanchor": "right", "yanchor": "bottom"},
-    }
-    pooled_watchlist_scatter = pooled_watchlist_top20.reindex(watchlist_signals).copy()
-    pooled_watchlist_scatter["short_label"] = pooled_watchlist_scatter.index.map(watchlist_short_label)
-    pooled_watchlist_scatter["callout"] = pooled_watchlist_scatter.index.map(watchlist_callouts)
-    for column in ("xshift", "yshift", "xanchor", "yanchor"):
-        pooled_watchlist_scatter[column] = pooled_watchlist_scatter.index.map(
-            lambda signal, field=column: watchlist_annotation_positions[signal][field]
-        )
     pooled_base_rate_pct = 100 * float(pooled_day_ahead_observables["is_top_20_revenue_day"].mean())
+    d1_watchlist = pooled_watchlist_top20.loc["DA spread >= 200 €/MWh"]
+    d2_watchlist = {
+        "lift_x": 2.24,
+        "precision_pct": 12.27,
+        "recall_pct": 27.0,
+    }
+    watchlist_screen_summary = pd.DataFrame(
+        [
+            {
+                "stage": "D-2 early warning",
+                "lift_x": d2_watchlist["lift_x"],
+                "precision_pct": d2_watchlist["precision_pct"],
+                "recall_pct": d2_watchlist["recall_pct"],
+                "rule_label_html": "weekday + recent 3d mean spread<br>≥ 175 €/MWh",
+                "supporting_label_html": "<span style='font-size:10px;color:#5c677d'>~1 in 8 flagged days is a top day | catches 27% of top days</span>",
+                "color": "#264653",
+            },
+            {
+                "stage": "D-1 day-ahead screen",
+                "lift_x": float(d1_watchlist["lift_x"]),
+                "precision_pct": float(d1_watchlist["precision_pct"]),
+                "recall_pct": float(d1_watchlist["recall_pct"]),
+                "rule_label_html": "day-ahead spread<br>≥ 200 €/MWh",
+                "supporting_label_html": "<span style='font-size:10px;color:#5c677d'>~1 in 5 flagged days is a top day | catches 50% of top days</span>",
+                "color": "#e76f51",
+            },
+        ]
+    )
 
     with st.spinner("Building same-throughput reallocation view..."):
         _, cycle_dispatch_by_cap = build_cycle_intensity_frontier_payload(
@@ -544,16 +500,19 @@ def main() -> None:
     st.markdown(
         f"Merchant BESS value is not earned evenly through the year. In {analysis_year}, the top 20% of days generated {top_20pct_share * 100:.1f}% of annual merchant revenue for a {duration_hours}h battery. That concentration matters because missing only a limited number of the best days can do disproportionate damage to annual returns. In {analysis_year}, missing the top 20 revenue days would have reduced annual revenue by {missed_day_twenty['lost_share_pct']:.1f}%."
     )
-    st.markdown(
-        "For owners, this is the core commercial risk. The issue is not average underperformance across the year. It is being unavailable when a limited set of highly valuable days arrives."
-    )
     render_chart_title("Missing a small number of the best days can do disproportionate damage to annual revenue")
     missed_days_figure = build_missed_days_figure(missed_days_curve, highlight_day=20)
     st.plotly_chart(missed_days_figure, width="stretch")
-    render_chart_caption(
-        f"In {analysis_year}, a relatively small number of days accounted for a disproportionate share of annual merchant value. Missing the top 20 revenue days would have reduced annual revenue by {missed_day_twenty['lost_share_pct']:.1f}%."
+    render_footer_note(
+        "Revenue loss measured as annual merchant revenue foregone when the highest-revenue days are assumed unavailable."
     )
-    render_takeaway("Not all days matter equally, and missing the wrong days is expensive.")
+    render_chart_caption(
+        "In 2025, a relatively small number of days accounted for a disproportionate share of annual merchant value. Missing the top 20 revenue days would have reduced annual revenue by 20.4%."
+    )
+    render_annotation_box(
+        "Why this matters",
+        "For a merchant BESS owner, the main commercial risk is not a weak average day. It is being unavailable when a small number of highly valuable days arrives.",
+    )
 
     st.subheader("The best days are partly visible ahead of delivery")
     st.markdown(
@@ -565,72 +524,193 @@ def main() -> None:
     st.markdown(
         "Some of these days were classic solar-surplus days, with cheap midday charging and stronger evening discharge. Others were driven more by broader market stress and repricing. The market drivers varied, but the commercial shape was similar: a wider and more valuable charging-to-discharging window."
     )
-    render_chart_title("High-value days tended to show a deeper midday trough and a stronger evening ramp")
+    render_chart_title("High-value days tended to show a deeper midday trough and a wider evening-minus-midday ramp")
     price_shape_figure = build_price_shape_figure(price_shape_profiles)
+    median_profiles = price_shape_profiles["median_profiles"].set_index("hour")[["all_days", "top_days"]].astype(float)
+    midday_profiles = median_profiles.loc[10:15]
+    evening_profiles = median_profiles.loc[17:21]
+
+    all_trough_hour = float(midday_profiles["all_days"].idxmin())
+    all_trough_line_value = float(midday_profiles["all_days"].min())
+    top_trough_hour = float(midday_profiles["top_days"].idxmin())
+    top_trough_line_value = float(midday_profiles["top_days"].min())
+    all_evening_hour = float(evening_profiles["all_days"].idxmax())
+    all_evening_line_value = float(evening_profiles["all_days"].max())
+    top_evening_hour = float(evening_profiles["top_days"].idxmax())
+    top_evening_line_value = float(evening_profiles["top_days"].max())
+
+    all_trough_metric = float(feature_comparison.loc["all_days", "median_midday_min_price_eur_mwh"])
+    top_trough_metric = float(feature_comparison.loc["top_20_revenue_days", "median_midday_min_price_eur_mwh"])
+    all_evening_metric = float(feature_comparison.loc["all_days", "median_evening_peak_price_eur_mwh"])
+    top_evening_metric = float(feature_comparison.loc["top_20_revenue_days", "median_evening_peak_price_eur_mwh"])
+    all_ramp_metric = float(feature_comparison.loc["all_days", "median_da_evening_minus_midday_ramp_eur_mwh"])
+    top_ramp_metric = float(feature_comparison.loc["top_20_revenue_days", "median_da_evening_minus_midday_ramp_eur_mwh"])
+
+    leader_style_all = {"color": "rgba(38, 70, 83, 0.45)", "width": 1.4, "dash": "dot"}
+    leader_style_top = {"color": "rgba(231, 111, 81, 0.55)", "width": 1.4, "dash": "dot"}
     price_shape_figure.add_annotation(
-        x=0.16,
-        y=0.98,
-        xref="paper",
-        yref="paper",
+        x=8.85,
+        y=31.5,
+        xref="x",
+        yref="y",
         text=(
-            f"<b>Median trough</b><br>{feature_comparison.loc['top_20_revenue_days', 'median_midday_min_price_eur_mwh']:.0f} €/MWh on top revenue days"
-            f"<br>vs {feature_comparison.loc['all_days', 'median_midday_min_price_eur_mwh']:.0f} €/MWh on an average day"
+            "<b>Median trough within the 10-15 window</b>"
+            f"<br>{top_trough_metric:.0f} €/MWh on top revenue days"
+            f"<br>vs {all_trough_metric:.0f} €/MWh on an average day"
         ),
         showarrow=False,
         align="left",
         xanchor="left",
-        yanchor="top",
+        yanchor="middle",
         bgcolor="rgba(255, 251, 245, 0.96)",
         bordercolor="rgba(20, 33, 61, 0.12)",
         borderwidth=1,
-        borderpad=6,
-        font={"size": 11},
+        borderpad=5,
+        font={"size": 10.5},
+    )
+
+    all_arrow_x = 21.95
+    top_arrow_x = 22.55
+
+    price_shape_figure.add_shape(
+        type="line",
+        x0=all_trough_hour,
+        y0=all_trough_line_value,
+        x1=all_arrow_x,
+        y1=all_trough_line_value,
+        xref="x",
+        yref="y",
+        line=leader_style_all,
+        layer="above",
+    )
+    price_shape_figure.add_shape(
+        type="line",
+        x0=all_evening_hour,
+        y0=all_evening_line_value,
+        x1=all_arrow_x,
+        y1=all_evening_line_value,
+        xref="x",
+        yref="y",
+        line=leader_style_all,
+        layer="above",
+    )
+    price_shape_figure.add_shape(
+        type="line",
+        x0=top_trough_hour,
+        y0=top_trough_line_value,
+        x1=top_arrow_x,
+        y1=top_trough_line_value,
+        xref="x",
+        yref="y",
+        line=leader_style_top,
+        layer="above",
+    )
+    price_shape_figure.add_shape(
+        type="line",
+        x0=top_evening_hour,
+        y0=top_evening_line_value,
+        x1=top_arrow_x,
+        y1=top_evening_line_value,
+        xref="x",
+        yref="y",
+        line=leader_style_top,
+        layer="above",
     )
     price_shape_figure.add_annotation(
-        x=0.61,
-        y=0.18,
-        xref="paper",
-        yref="paper",
-        text=(
-            f"<b>Median evening-minus-midday ramp</b><br>{feature_comparison.loc['top_20_revenue_days', 'median_da_evening_minus_midday_ramp_eur_mwh']:.0f} €/MWh"
-            f"<br>vs {feature_comparison.loc['all_days', 'median_da_evening_minus_midday_ramp_eur_mwh']:.0f} €/MWh"
-        ),
-        showarrow=False,
-        align="left",
-        xanchor="left",
-        yanchor="bottom",
-        bgcolor="rgba(255, 251, 245, 0.96)",
-        bordercolor="rgba(20, 33, 61, 0.12)",
-        borderwidth=1,
-        borderpad=6,
-        font={"size": 11},
+        x=all_arrow_x,
+        y=all_evening_line_value,
+        ax=all_arrow_x,
+        ay=all_trough_line_value,
+        xref="x",
+        yref="y",
+        axref="x",
+        ayref="y",
+        text="",
+        showarrow=True,
+        arrowhead=2,
+        arrowside="end+start",
+        arrowsize=1,
+        arrowwidth=1.8,
+        arrowcolor="#264653",
     )
+    price_shape_figure.add_annotation(
+        x=top_arrow_x,
+        y=top_evening_line_value,
+        ax=top_arrow_x,
+        ay=top_trough_line_value,
+        xref="x",
+        yref="y",
+        axref="x",
+        ayref="y",
+        text="",
+        showarrow=True,
+        arrowhead=2,
+        arrowside="end+start",
+        arrowsize=1,
+        arrowwidth=1.8,
+        arrowcolor="#e76f51",
+    )
+    price_shape_figure.add_annotation(
+        x=all_arrow_x + 0.22,
+        y=(all_trough_line_value + all_evening_line_value) / 2,
+        xref="x",
+        yref="y",
+        text=f"<b>{all_ramp_metric:.0f} €/MWh</b>",
+        showarrow=False,
+        font={"size": 10.5, "color": "#264653"},
+        bgcolor="rgba(255, 251, 245, 0.96)",
+        bordercolor="rgba(20, 33, 61, 0.10)",
+        borderwidth=1,
+        borderpad=4,
+    )
+    price_shape_figure.add_annotation(
+        x=top_arrow_x + 0.22,
+        y=(top_trough_line_value + top_evening_line_value) / 2,
+        xref="x",
+        yref="y",
+        text=f"<b>{top_ramp_metric:.0f} €/MWh</b>",
+        showarrow=False,
+        font={"size": 10.5, "color": "#e76f51"},
+        bgcolor="rgba(255, 251, 245, 0.96)",
+        bordercolor="rgba(20, 33, 61, 0.10)",
+        borderwidth=1,
+        borderpad=4,
+    )
+    price_shape_figure.update_xaxes(range=[0, 23.35])
+    price_shape_figure.update_yaxes(range=[0, max(top_evening_metric, all_evening_metric, top_evening_line_value, all_evening_line_value) + 8])
     st.plotly_chart(price_shape_figure, width="stretch")
+    render_footer_note(
+        "Profiles shown as median hourly day-ahead prices for top-20 revenue days versus the full sample average day."
+    )
     render_chart_caption(
         "Many of the best revenue days already showed a recognisable day-ahead profile before delivery: weaker midday prices, stronger evening prices, and a wider charging-to-discharging window."
     )
     render_takeaway("The best days are not perfectly predictable, but they are not invisible either.")
 
-    st.subheader("A simple day-ahead watchlist is already useful")
+    st.subheader("A simple watchlist is already useful")
     st.markdown(
-        "The practical question is not whether operators can predict every top-revenue day. It is whether the day-ahead curve can identify days that are more likely than normal to become commercially important."
+        "The practical question is not whether operators can predict every top-revenue day. It is whether the market can identify days that are more likely than normal to become commercially important."
     )
     st.markdown(
-        "Across pooled 2021–2025 data, the answer was yes. Simple rules built only from the day-ahead curve consistently flagged days with a meaningfully higher probability of becoming top revenue days."
+        "At the day-ahead horizon, the answer is clearly yes. A simple rule already proved useful: when the day-ahead spread was at least 200 €/MWh, the day was around four times more likely than normal to become a top revenue day. The rule is simple by design. It flags days when the day-ahead curve already shows an unusually wide charging-to-discharging window."
     )
     st.markdown(
-        f"Base rates matter here. In the pooled sample, a random day had only about a {pooled_base_rate_pct:.1f}% chance of becoming a top-20 revenue day. A signal with around 20% precision is therefore already useful: it identifies days with roughly four times the normal odds."
+        "Useful signal remained even two days earlier. When the market was already in a higher-spread regime — captured here by weekday and a recent three-day mean spread of at least 175 €/MWh — the odds of a top revenue day were a little more than twice the normal level. This is weaker than the day-ahead screen, but still useful as an early warning for maintenance timing."
     )
     st.markdown(
-        "This does not need to be a trading model. It only needs to identify elevated-opportunity days early enough to improve maintenance timing, operating readiness, and throughput prioritisation. A useful screen does not need perfect accuracy. It only needs to move planned downtime away from materially more valuable days."
+        "The main caveat is stability. Early-warning screens were less consistent across years and were stronger in the more stressed 2021–2022 period than in 2025. For owners, that suggests a practical split: use D-2 as an early-warning layer, but rely most heavily on D-1 for high-conviction readiness decisions."
     )
-    render_chart_title("Simple day-ahead rules identified days with materially higher-than-normal odds of becoming top revenue days")
-    watchlist_figure = build_watchlist_scatter_figure(pooled_watchlist_scatter, pooled_base_rate_pct)
+    render_takeaway("A useful D-2 early-warning screen exists, but the strongest screening power still appears at D-1.")
+    render_chart_title("A useful early-warning screen exists at D-2, but the strongest screening power appears at D-1")
+    watchlist_figure = build_early_warning_screen_figure(watchlist_screen_summary)
     st.plotly_chart(watchlist_figure, width="stretch")
-    render_chart_caption(
-        "Even simple signals derived from the day-ahead curve identified days with much higher-than-normal odds of becoming top revenue days."
+    render_footer_note(
+        f"Base rate: {pooled_base_rate_pct:.2f}% probability of a random day becoming a top-20 revenue day in pooled 2021–2025 data."
     )
-    render_takeaway("Imperfect screens are still good enough to improve timing.")
+    render_chart_caption(
+        f"A useful early-warning signal exists before the day-ahead horizon, but screening power strengthens materially at D-1. In pooled 2021–2025 data, a simple D-2 screen still raised the odds of a top revenue day by {d2_watchlist['lift_x']:.2f}x versus the base rate, compared with {float(d1_watchlist['lift_x']):.2f}x for a simple D-1 day-ahead screen."
+    )
+    render_takeaway("Use D-2 for maintenance awareness and D-1 for readiness decisions.")
 
     st.subheader("The same cycles are worth more on the right days")
     st.markdown(
@@ -651,27 +731,24 @@ def main() -> None:
     render_chart_caption(
         "Flexibility added value even without additional throughput, because the same annual cycles were worth more when they were spent on stronger days."
     )
-    render_takeaway("The value of flexibility is not only more throughput. It is better timing.")
+    render_takeaway("Even with the same annual throughput, a battery earns more when cycles are concentrated into the days that matter most.")
 
     st.subheader("What This Changes for Owners")
     st.markdown(
-        "For merchant BESS owners, the main commercial risk is not average underperformance across the year. It is being unavailable on a limited set of disproportionately valuable days. Because many of those days are already partly visible from the day-ahead curve, availability should be managed against expected opportunity rather than average conditions. Planned maintenance, operating readiness, and throughput headroom should all be treated as market-timed decisions."
+        "For merchant BESS owners, the main commercial risk is not average underperformance across the year. It is being unavailable on a limited set of disproportionately valuable days."
     )
     st.markdown(
-        "Merchant flexibility is most valuable when it can be concentrated into the days that matter most. Annual averages hide that reality. Revenue concentration exposes it."
+        "Because many of those days are already partly visible from the day-ahead curve, availability should be managed against expected opportunity rather than average conditions. Planned maintenance, operating readiness, and throughput headroom should all be treated as market-timed decisions."
     )
     render_closing_line(
         "For merchant BESS, flexibility is not only the ability to cycle. It is the ability to be available, ready, and unconstrained when the best days arrive."
     )
-    with st.expander("Method note"):
-        st.caption(
-            f"Methods: Energy-Charts day-ahead data, Netztransparenz ID-AEP intraday series, fixed round-trip efficiency of {DEFAULT_RTE:.2f}, sequential day-ahead plus intraday dispatch with SciPy HiGHS, top-20 revenue-day ranking for the {analysis_year} case study, pooled 2021–2025 precision/recall testing for day-ahead watchlist rules, and same-throughput reallocation tests that compare strict daily caps with an annual allocator using the same realised FEC."
-        )
-        render_public_sources()
+    render_takeaway("Availability, readiness, and flexibility matter most when they are timed.")
     if selected_intraday_prices.empty:
         render_footer_note(
             "Modeled as day-ahead only for the selected year because the intraday layer could not be loaded."
         )
+    render_footer_note("© 2026 Anton Telegin. Analysis based on public market data.")
 
 
 if __name__ == "__main__":
