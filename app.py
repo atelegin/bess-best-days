@@ -1,52 +1,26 @@
 from __future__ import annotations
 
-import numpy as np
+import pickle
+from pathlib import Path
+
 import pandas as pd
 import streamlit as st
 
-from src.analysis.concentration import compute_concentration_stats
-from src.analysis.day_ahead_signals import (
-    build_day_ahead_observable_table,
-    build_day_ahead_watchlist_table,
-    concatenate_day_ahead_observable_tables,
-    summarize_day_ahead_feature_separation,
-)
-from src.analysis.drivers import compute_price_shape_profiles
-from src.analysis.opportunity_bridge import (
-    build_daily_value_curve,
-    summarize_reallocated_same_throughput_vs_strict_daily_cap,
-)
-from src.analysis.revenue_breakdown import summarize_missing_top_days
 from src.charts.opportunity import (
     build_early_warning_screen_figure,
     build_missed_days_figure,
     build_same_cycles_reallocation_figure,
 )
 from src.charts.scatter import build_price_shape_figure
-from src.data.cache import get_or_build_dataframe, make_cache_key
-from src.data.netztransparenz import fetch_id_aep
-from src.data.prices import fetch_day_ahead_prices
-from src.models.degradation import (
-    DEFAULT_DEGRADATION_ASSUMPTIONS,
-    equivalent_stress_fec_per_year,
-    estimate_years_to_eol,
-    lifecycle_value_profile,
-)
-from src.models.dispatch import (
-    AGGRESSIVE_STRATEGY,
-    CONSERVATIVE_STRATEGY,
-    DispatchStrategy,
-    run_dispatch_for_period,
-    run_dispatch_with_intraday_overlay_for_period,
-)
 
 REPORT_TITLE = "The Cost of Missing the Best Days"
-YEARS = list(range(2021, 2026))
-DEFAULT_RTE = 0.86
-BASE_CASE_DURATION_HOURS = 2
-BASE_CASE_ANALYSIS_YEAR = 2025
-BASE_CASE_DISCOUNT_RATE = 0.08
-BASE_CASE_PROJECT_LIFETIME = 15
+PRECOMPUTED_PATH = Path(__file__).resolve().parent / "data" / "precomputed.pkl"
+
+
+@st.cache_data(show_spinner=False)
+def load_precomputed() -> dict:
+    with open(PRECOMPUTED_PATH, "rb") as f:
+        return pickle.load(f)
 
 
 def apply_app_style() -> None:
@@ -202,63 +176,6 @@ def render_header() -> None:
     )
 
 
-def select_battery_inputs() -> dict[str, float | int]:
-    return {
-        "duration_hours": BASE_CASE_DURATION_HOURS,
-        "analysis_year": BASE_CASE_ANALYSIS_YEAR,
-        "discount_rate": BASE_CASE_DISCOUNT_RATE,
-        "project_lifetime": BASE_CASE_PROJECT_LIFETIME,
-    }
-
-
-def compute_dispatch_with_disk_cache(
-    year: int,
-    strategy: DispatchStrategy,
-    price_frame: pd.DataFrame,
-    energy_mwh: float,
-    rte: float,
-    market_key: str = "day_ahead",
-    intraday_price_frame: pd.DataFrame | None = None,
-) -> pd.DataFrame:
-    cache_key = make_cache_key(
-        "dispatch",
-        year=year,
-        market=market_key,
-        strategy=strategy.name,
-        energy_mwh=energy_mwh,
-        rte=round(rte, 4),
-        power_mw=1.0,
-        version=4,
-    )
-    return get_or_build_dataframe(
-        cache_key=cache_key,
-        builder=lambda: run_dispatch_with_intraday_overlay_for_period(
-            day_ahead_price_frame=price_frame,
-            intraday_price_frame=intraday_price_frame,
-            strategy=strategy,
-            energy_mwh=energy_mwh,
-            rte=rte,
-        )
-        if intraday_price_frame is not None and not intraday_price_frame.empty
-        else run_dispatch_for_period(price_frame=price_frame, strategy=strategy, energy_mwh=energy_mwh, rte=rte),
-        ttl_hours=None,
-        force_refresh=False,
-        metadata={"year": year, "strategy": strategy.name, "market": market_key},
-    )
-
-
-@st.cache_data(show_spinner=False)
-def load_core_data() -> pd.DataFrame:
-    return fetch_day_ahead_prices(start=f"{YEARS[0]}-01-01", end=f"{YEARS[-1]}-12-31", force_refresh=False)
-
-
-@st.cache_data(show_spinner=False)
-def load_id_aep_for_year(year: int) -> pd.DataFrame:
-    return fetch_id_aep(
-        start=f"{year}-01-01",
-        end=f"{year}-12-31",
-        force_refresh=False,
-    )
 
 
 def render_intro() -> None:
@@ -305,66 +222,6 @@ def render_closing_line(text: str) -> None:
     st.markdown(f'<div class="closing-line">{text}</div>', unsafe_allow_html=True)
 
 
-def build_cycle_intensity_frontier_payload(
-    year: int,
-    price_frame: pd.DataFrame,
-    intraday_price_frame: pd.DataFrame,
-    energy_mwh: float,
-    rte: float,
-    discount_rate: float,
-    project_lifetime: int,
-) -> tuple[pd.DataFrame, dict[float, pd.DataFrame]]:
-    cycle_caps = np.arange(0.25, 4.01, 0.25)
-    records = []
-    dispatch_by_cycle_cap: dict[float, pd.DataFrame] = {}
-    for cycle_cap in cycle_caps:
-        strategy = DispatchStrategy(
-            name=f"frontier_{year}_{energy_mwh:.1f}h_{str(cycle_cap).replace('.', 'p')}",
-            label=f"{cycle_cap:.2f} cycles/day",
-            max_cycles=float(cycle_cap),
-            soc_min_frac=AGGRESSIVE_STRATEGY.soc_min_frac,
-            soc_max_frac=AGGRESSIVE_STRATEGY.soc_max_frac,
-            min_spread_eur_mwh=AGGRESSIVE_STRATEGY.min_spread_eur_mwh,
-        )
-        dispatch = compute_dispatch_with_disk_cache(
-            year=year,
-            strategy=strategy,
-            price_frame=price_frame,
-            energy_mwh=energy_mwh,
-            rte=rte,
-            market_key="da_id_overlay_frontier_v2",
-            intraday_price_frame=intraday_price_frame,
-        )
-        dispatch_by_cycle_cap[float(cycle_cap)] = dispatch
-        lifecycle = lifecycle_value_profile(
-            year1_revenue=float(dispatch["revenue_eur_per_mw"].sum()),
-            dispatch_frame=dispatch,
-            years=project_lifetime,
-            discount_rate=discount_rate,
-            annual_market_decline=0.0,
-            assumptions=DEFAULT_DEGRADATION_ASSUMPTIONS,
-        )
-        records.append(
-            {
-                "max_cycles_per_day": float(cycle_cap),
-                "year1_revenue_eur_per_mw": float(dispatch["revenue_eur_per_mw"].sum()),
-                "full_equivalent_cycles_per_year": float(dispatch["full_equivalent_cycles"].sum()),
-                "stress_fec_per_year": equivalent_stress_fec_per_year(
-                    dispatch,
-                    assumptions=DEFAULT_DEGRADATION_ASSUMPTIONS,
-                ),
-                "years_to_eol": estimate_years_to_eol(
-                    dispatch,
-                    assumptions=DEFAULT_DEGRADATION_ASSUMPTIONS,
-                ),
-                "discounted_lifetime_value_eur_per_mw": float(
-                    lifecycle["cumulative_discounted_revenue_eur_per_mw"].iloc[-1]
-                ),
-            }
-        )
-    return pd.DataFrame(records), dispatch_by_cycle_cap
-
-
 def main() -> None:
     st.set_page_config(page_title=REPORT_TITLE, layout="wide", initial_sidebar_state="collapsed")
     apply_app_style()
@@ -375,82 +232,27 @@ def main() -> None:
         "<br><strong>Validation:</strong> pooled 2021–2025"
         "<br><strong>Method note:</strong> Merchant revenue is modelled as a combined day-ahead plus intraday series, using Energy-Charts day-ahead prices and the official Netztransparenz ID-AEP index for the intraday layer. Dispatch is modelled sequentially across day-ahead and intraday with a fixed round-trip efficiency of 0.86."
     )
-    inputs = select_battery_inputs()
 
-    duration_hours = int(inputs["duration_hours"])
-    rte = DEFAULT_RTE
-    analysis_year = int(inputs["analysis_year"])
-    discount_rate = float(inputs["discount_rate"])
-    project_lifetime = int(inputs["project_lifetime"])
-    energy_mwh = float(duration_hours)
+    pre = load_precomputed()
+    analysis_year = pre["analysis_year"]
+    duration_hours = pre["duration_hours"]
 
-    with st.spinner("Fetching and caching price data..."):
-        prices = load_core_data()
+    concentration_stats = pre["concentration_stats"]
+    top_20pct_share = concentration_stats["top_20_days_pct_of_revenue"]
+    missed_days_curve = pre["missed_days_curve"]
+    missed_day_twenty = missed_days_curve.loc[20]
+    price_shape_profiles = pre["price_shape_profiles"]
+    feature_comparison = pre["feature_comparison"]
+    pooled_watchlist_top20 = pre["pooled_watchlist_top20"]
+    pooled_base_rate_pct = pre["pooled_base_rate_pct"]
+    equal_throughput_summary = pre["equal_throughput_summary"]
+    intraday_missing_years = pre["intraday_missing_years"]
+    selected_intraday_prices_empty = pre["selected_intraday_prices_empty"]
 
-    conservative_dispatch_by_year: dict[int, pd.DataFrame] = {}
-    intraday_prices_by_year: dict[int, pd.DataFrame] = {}
-    intraday_missing_years: list[int] = []
-
-    progress = st.progress(0.0, text="Running DA + intraday dispatch across analysis years...")
-    total_runs = len(YEARS) * 2
-    completed = 0
-    for year in YEARS:
-        year_prices = prices[prices.index.year == year]
-        try:
-            intraday_prices_by_year[year] = load_id_aep_for_year(year)
-        except Exception:
-            intraday_prices_by_year[year] = pd.DataFrame(columns=["price_eur_mwh"])
-            intraday_missing_years.append(year)
-        completed += 1
-        progress.progress(completed / total_runs, text=f"Intraday series cached: {year}")
-
-        conservative_dispatch_by_year[year] = compute_dispatch_with_disk_cache(
-            year=year,
-            strategy=CONSERVATIVE_STRATEGY,
-            price_frame=year_prices,
-            energy_mwh=energy_mwh,
-            rte=rte,
-            market_key="da_id_overlay",
-            intraday_price_frame=intraday_prices_by_year[year],
-        )
-        completed += 1
-        progress.progress(completed / total_runs, text=f"Dispatch cached: {year} / restrained")
-    progress.empty()
     if intraday_missing_years:
         missing_label = ", ".join(str(year) for year in intraday_missing_years)
         st.warning(f"ID-AEP could not be loaded for {missing_label}. Those years fall back to day-ahead only.")
 
-    selected_prices = prices[prices.index.year == analysis_year]
-    selected_intraday_prices = intraday_prices_by_year.get(analysis_year, pd.DataFrame(columns=["price_eur_mwh"]))
-    conservative_selected = conservative_dispatch_by_year[analysis_year]
-    concentration_stats = compute_concentration_stats(conservative_selected["revenue_eur_per_mw"])
-    top_20pct_share = concentration_stats["top_20_days_pct_of_revenue"]
-    missed_days_curve = summarize_missing_top_days(
-        conservative_selected["revenue_eur_per_mw"],
-        top_day_counts=tuple(range(1, 51)),
-    )
-    missed_day_twenty = missed_days_curve.loc[20]
-    selected_top_day_dates = conservative_selected["revenue_eur_per_mw"].sort_values(ascending=False).head(20).index
-    price_shape_profiles = compute_price_shape_profiles(selected_prices, selected_top_day_dates)
-
-    selected_day_ahead_observables = build_day_ahead_observable_table(
-        day_ahead_price_frame=selected_prices,
-        outcome_dispatch=conservative_selected,
-        top_day_counts=(10, 20),
-    )
-    feature_comparison = summarize_day_ahead_feature_separation(selected_day_ahead_observables)
-
-    day_ahead_observables_by_year = {
-        year: build_day_ahead_observable_table(
-            day_ahead_price_frame=prices[prices.index.year == year],
-            outcome_dispatch=conservative_dispatch_by_year[year],
-            top_day_counts=(10, 20),
-        )
-        for year in YEARS
-    }
-    pooled_day_ahead_observables = concatenate_day_ahead_observable_tables(day_ahead_observables_by_year)
-    pooled_watchlist_top20 = build_day_ahead_watchlist_table(pooled_day_ahead_observables, target_count=20)
-    pooled_base_rate_pct = 100 * float(pooled_day_ahead_observables["is_top_20_revenue_day"].mean())
     d1_watchlist = pooled_watchlist_top20.loc["DA spread >= 200 €/MWh"]
     d2_watchlist = {
         "lift_x": 2.24,
@@ -478,23 +280,6 @@ def main() -> None:
                 "color": "#e76f51",
             },
         ]
-    )
-
-    with st.spinner("Building same-throughput reallocation view..."):
-        _, cycle_dispatch_by_cap = build_cycle_intensity_frontier_payload(
-            year=analysis_year,
-            price_frame=selected_prices,
-            intraday_price_frame=selected_intraday_prices,
-            energy_mwh=energy_mwh,
-            rte=rte,
-            discount_rate=discount_rate,
-            project_lifetime=project_lifetime,
-        )
-    daily_value_curve = build_daily_value_curve(cycle_dispatch_by_cap)
-    equal_throughput_summary, _ = summarize_reallocated_same_throughput_vs_strict_daily_cap(
-        dispatch_by_cycle_cap=cycle_dispatch_by_cap,
-        daily_value_curve=daily_value_curve,
-        daily_caps=(1.0, 1.5, 2.0),
     )
 
     st.subheader("Revenue is concentrated where it matters most")
@@ -745,7 +530,7 @@ def main() -> None:
         "For merchant BESS, flexibility is not only the ability to cycle. It is the ability to be available, ready, and unconstrained when the best days arrive."
     )
     render_takeaway("Availability, readiness, and flexibility matter most when they are timed.")
-    if selected_intraday_prices.empty:
+    if selected_intraday_prices_empty:
         render_footer_note(
             "Modeled as day-ahead only for the selected year because the intraday layer could not be loaded."
         )
